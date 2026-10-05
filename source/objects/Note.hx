@@ -13,6 +13,13 @@ import flixel.math.FlxRect;
 
 using StringTools;
 
+typedef QuantumColor = {
+	var ratio:Float;
+	var r:FlxColor;
+	var g:FlxColor;
+	var b:FlxColor;
+}
+
 typedef EventNote = {
 	strumTime:Float,
 	event:String,
@@ -86,6 +93,17 @@ class Note extends FlxSprite
 	public var eventVal1:String = '';
 	public var eventVal2:String = '';
 
+	public static var quantumPalette:Array<QuantumColor> = [
+		{ ratio: 1.0,         r: 0xFFF90C2F, g: 0xFFFFFFFF, b: 0xFF650925 }, // 4th  - Red
+		{ ratio: 1/2,         r: 0xFF488BFF, g: 0xFFFFFFFF, b: 0xFF3A0F96 }, // 8th  - Blue
+		{ ratio: 1/3,         r: 0xFF29F73F, g: 0xFFFFFFFF, b: 0xFF0C4F06 }, // 12th - Green
+		{ ratio: 1/4,         r: 0xFFF7ED26, g: 0xFFFFFFFF, b: 0xFFA86D00 }, // 16th - Yellow
+		{ ratio: 1/6,         r: 0xFFFF7B00, g: 0xFFFFFFFF, b: 0xFF7A3400 }, // 24th - Orange
+		{ ratio: 1/8,         r: 0xFF9C1CD7, g: 0xFFFFFFFF, b: 0xFF4C0760 }, // 32nd - PPurple
+		{ ratio: 1/12,        r: 0xFFFF96BE, g: 0xFFFFFFFF, b: 0xFF9D467A }, // 48th - Pink Peach
+		{ ratio: 1/16,        r: 0xFF2E355C, g: 0xFFFFFFFF, b: 0xFF17182F }  // 64th - Gray Blue
+	];
+
 	public var rgbShader:RGBShaderReference;
 	public static var globalRgbShaders:Array<RGBPalette> = [];
 	public var inEditor:Bool = false;
@@ -99,7 +117,12 @@ class Note extends FlxSprite
 	public static var SUSTAIN_SIZE:Int = 44;
 	public static var swagWidth:Float = 160 * 0.7;
 	public static var colArray:Array<String> = ['purple', 'blue', 'green', 'red'];
-	public static var defaultNoteSkin(default, never):String = 'noteSkins/NOTE_assets';
+	public static var defaultNoteSkin(get, never):String;
+
+	@:noCompletion
+	static function get_defaultNoteSkin():String {
+		return ClientPrefs.data.quantumNotes ? 'noteSkins/RGB_NOTE_assets' : 'noteSkins/NOTE_assets';
+	}
 
 	public var noteSplashData:NoteSplashData = {
 		disabled: false,
@@ -179,17 +202,77 @@ class Note extends FlxSprite
 		var arr:Array<FlxColor> = ClientPrefs.data.arrowRGB[noteData];
 		if(PlayState.isPixelStage) arr = ClientPrefs.data.arrowRGBPixel[noteData];
 
-		if (arr != null && noteData > -1 && noteData <= arr.length)
+		if (ClientPrefs.data.quantumNotes)
 		{
-			rgbShader.r = arr[0];
-			rgbShader.g = arr[1];
-			rgbShader.b = arr[2];
+			applyQuantumColor();
+		}else{
+			if (arr != null && noteData > -1 && noteData < arr.length)
+			{
+				rgbShader.r = arr[0];
+				rgbShader.g = arr[1];
+				rgbShader.b = arr[2];
+			}
+			else
+			{
+				rgbShader.r = 0xFFFF0000;
+				rgbShader.g = 0xFF00FF00;
+				rgbShader.b = 0xFF0000FF;
+			}
 		}
-		else
+	}
+
+	public function applyQuantumColor(?time:Float)
+	{
+		if (rgbShader == null || Conductor.crochet <= 0) return;
+
+		if (isSustainNote && parent != null)
 		{
-			rgbShader.r = 0xFFFF0000;
-			rgbShader.g = 0xFF00FF00;
-			rgbShader.b = 0xFF0000FF;
+			if (parent.rgbShader != null)
+			{
+				rgbShader.r = parent.rgbShader.r;
+				rgbShader.g = parent.rgbShader.g;
+				rgbShader.b = parent.rgbShader.b;
+			}
+			return;
+		}
+
+		var targetTime:Float = (time != null) ? time : strumTime;
+
+		var beat:Float = targetTime / Conductor.crochet;
+		var beatFraction:Float = beat - Math.floor(beat);
+		if (beatFraction < 0) beatFraction += 1;
+
+		if (beatFraction > 0.97) beatFraction = 0.0;
+
+		var eps:Float = 0.035;
+		var matchedColor:QuantumColor = null;
+
+		for (qc in quantumPalette)
+		{
+			var checkRatio:Float = (qc.ratio >= 1.0) ? 0.0 : qc.ratio;
+			
+			var remainder:Float = beatFraction % checkRatio;
+			if (checkRatio == 0.0) remainder = beatFraction;
+
+			if (remainder < eps || Math.abs(remainder - checkRatio) < eps)
+			{
+				matchedColor = qc;
+				break;
+			}
+		}
+
+		if (matchedColor == null)
+			matchedColor = { ratio: 0, r: 0xFFE7FFFB, g: 0xFF7B8581, b: 0xFFA7B5C3 };
+
+		rgbShader.r = matchedColor.r;
+		rgbShader.g = matchedColor.g;
+		rgbShader.b = matchedColor.b;
+
+		if (noteSplashData != null)
+		{
+			noteSplashData.r = rgbShader.r;
+			noteSplashData.g = rgbShader.g;
+			noteSplashData.b = rgbShader.b;
 		}
 	}
 
@@ -264,7 +347,8 @@ class Note extends FlxSprite
 		if(noteData > -1)
 		{
 			rgbShader = new RGBShaderReference(this, initializeGlobalRGBShader(noteData));
-			if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB) rgbShader.enabled = false;
+			// if(PlayState.SONG != null && PlayState.SONG.disableNoteRGB) rgbShader.enabled = false;
+			rgbShader.enabled = ClientPrefs.data.quantumNotes;
 			texture = '';
 
 			x += swagWidth * (noteData);
@@ -282,10 +366,10 @@ class Note extends FlxSprite
 
 		if (isSustainNote && prevNote != null)
 		{
-			alpha = 0.6;
-			multAlpha = 0.6;
 			hitsoundDisabled = true;
 			if(ClientPrefs.data.downScroll) flipY = true;
+
+			parent = prevNote.isSustainNote ? prevNote.parent : prevNote; // <--- AGREGAR ESTA LÍNEA
 
 			offsetX += width / 2;
 			copyAngle = false;
@@ -588,8 +672,8 @@ class Note extends FlxSprite
 	}
 
 	public function desat(){
-		alpha = 0.7;
-		multAlpha = 0.7;
+		alpha = ClientPrefs.data.quantumNotes ? 0.4 : 0.7;
+		multAlpha = ClientPrefs.data.quantumNotes ? 0.4 : 0.7;
 		if (adjustColor != null) {
 			adjustColor.brightness = 30;
 			adjustColor.contrast = 25;

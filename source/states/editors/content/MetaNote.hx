@@ -50,6 +50,7 @@ class MetaNote extends Note
 	{
 		this.songData[0] = v;
 		this.strumTime = v;
+		defaultRGB();
 	}
 
 	var _lastZoom:Float = -1;

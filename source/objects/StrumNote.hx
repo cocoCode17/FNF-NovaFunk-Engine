@@ -159,13 +159,73 @@ class StrumNote extends FlxSprite
 		super.update(elapsed);
 	}
 
-	public function playAnim(anim:String, ?force:Bool = false) {
+	public function playAnim(anim:String, ?force:Bool = false, ?note:Note) {
 		animation.play(anim, force);
 		if(animation.curAnim != null)
 		{
 			centerOffsets();
 			centerOrigin();
 		}
-		if(useRGBShader) rgbShader.enabled = (animation.curAnim != null && animation.curAnim.name != 'static');
+
+		if(ClientPrefs.data.quantumNotes)
+		{
+			rgbShader.enabled = (animation.curAnim != null && animation.curAnim.name != 'static');
+			if (rgbShader.enabled)
+			{
+				if (animation.curAnim != null && animation.curAnim.name == 'confirm' && note != null)
+				{
+					rgbShader.r = note.rgbShader.r;
+					rgbShader.g = note.rgbShader.g;
+					rgbShader.b = note.rgbShader.b;
+				}
+				else
+				{
+					applyQuantumColor();
+				}
+			}
+		}
+	}
+
+	public function applyQuantumColor(?time:Float)
+	{
+		if (Conductor.crochet <= 0) return;
+
+		var targetTime:Float = (time != null) ? time : Conductor.songPosition;
+		var beat:Float = targetTime / Conductor.crochet;
+		var beatFraction:Float = beat - Math.floor(beat);
+		if (beatFraction < 0) beatFraction += 1;
+
+		var eps:Float = 0.03;
+
+		if (beatFraction < eps || beatFraction > (1.0 - eps))
+		{
+			rgbShader.r = 0xFFF90C2F;
+			rgbShader.g = 0xFFFFFFFF;
+			rgbShader.b = 0xFF650925;
+		}
+		else if (Math.abs(beatFraction - 0.5) < eps)
+		{
+			rgbShader.r = 0xFF488BFF;
+			rgbShader.g = 0xFFFFFFFF;
+			rgbShader.b = 0xFF3A0F96;
+		}
+		else if (Math.abs(beatFraction - (1.0 / 3.0)) < eps || Math.abs(beatFraction - (2.0 / 3.0)) < eps)
+		{
+			rgbShader.r = 0xFF29F73F;
+			rgbShader.g = 0xFFFFFFFF;
+			rgbShader.b = 0xFF0C4F06;
+		}
+		else if (Math.abs(beatFraction - 0.25) < eps || Math.abs(beatFraction - 0.75) < eps)
+		{
+			rgbShader.r = 0xFFF7ED26;
+			rgbShader.g = 0xFFFFFFFF;
+			rgbShader.b = 0xFFA86D00;
+		}
+		else
+		{
+			rgbShader.r = 0xFF9C1CD7;
+			rgbShader.g = 0xFFFFFFFF;
+			rgbShader.b = 0xFF4C0760;
+		}
 	}
 }

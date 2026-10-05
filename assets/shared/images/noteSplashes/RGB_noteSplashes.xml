@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TextureAtlas imagePath="noteSplashes-vanilla.png">
+<TextureAtlas imagePath="RGB_noteSplashes.png">
 	<!-- Created with Adobe Animate version 23.0.2.103 -->
 	<!-- http://www.adobe.com/products/animate.html -->
 	<SubTexture name="vanilla splash red 10000" x="1" y="313" width="202" height="284" frameX="-35" frameY="-14" frameWidth="274" frameHeight="311"/>

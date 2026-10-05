@@ -20,11 +20,12 @@ typedef NoteSplashAnim = {
 }
 
 typedef NoteSplashConfig = {
-	animations:Map<String, NoteSplashAnim>,
-	scale:Float,
-	allowRGB:Bool,
-	allowPixel:Bool,
-	rgb:Array<Null<RGB>>
+	var animations:Map<String, NoteSplashAnim>;
+	var scale:Float;
+	@:optional var alpha:Null<Float>;
+	var allowRGB:Bool;
+	var allowPixel:Bool;
+	var rgb:Array<Null<RGB>>;
 }
 
 class NoteSplash extends FlxSprite
@@ -42,7 +43,13 @@ class NoteSplash extends FlxSprite
 	var spawned:Bool = false;
 	var noteDataMap:Map<Int, String> = new Map();
 
-	public static var defaultNoteSplash(default, never):String = "noteSplashes/noteSplashes";
+	public static var defaultNoteSplash(get, never):String;
+	
+	@:noCompletion
+	static function get_defaultNoteSplash():String {
+		return ClientPrefs.data.quantumNotes ? 'noteSplashes/RGB_noteSplashes' : 'noteSplashes/noteSplashes';
+	}
+
 	public static var configs:Map<String, NoteSplashConfig> = new Map();
 
 	public function new(?x:Float = 0, ?y:Float = 0, ?splash:String)
@@ -265,9 +272,18 @@ class NoteSplash extends FlxSprite
 
 					if (note != null)
 					{
-						if (note.noteSplashData.r != -1) tempShader.r = note.noteSplashData.r;
-						if (note.noteSplashData.g != -1) tempShader.g = note.noteSplashData.g;
-						if (note.noteSplashData.b != -1) tempShader.b = note.noteSplashData.b;
+						if (ClientPrefs.data.quantumNotes)
+						{
+							tempShader.r = note.rgbShader.r;
+							tempShader.g = note.rgbShader.g;
+							tempShader.b = note.rgbShader.b;
+						}
+						else
+						{
+							if (note.noteSplashData.r != -1) tempShader.r = note.noteSplashData.r;
+							if (note.noteSplashData.g != -1) tempShader.g = note.noteSplashData.g;
+							if (note.noteSplashData.b != -1) tempShader.b = note.noteSplashData.b;
+						}
 					}
 				}
 				else tempShader.copyValues(Note.globalRgbShaders[noteData % Note.colArray.length]);
@@ -292,7 +308,8 @@ class NoteSplash extends FlxSprite
 			spawned = false;
 		}
 
-		alpha = ClientPrefs.data.splashAlpha;
+		//now the splashalpha is an multalpha :D
+		alpha *= ClientPrefs.data.splashAlpha;
 		if (note != null) alpha = note.noteSplashData.a;
 
 		antialiasing = ClientPrefs.data.antialiasing;
@@ -410,6 +427,7 @@ class NoteSplash extends FlxSprite
 		}
 
 		scale.set(value.scale, value.scale);
+		alpha = value.alpha != null ? value.alpha : 1;
 		return config = value;
 	}
 

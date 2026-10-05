@@ -9,6 +9,7 @@ import states.TitleState;
 // Add a variable here and it will get automatically saved
 @:structInit class SaveVariables {
 	public var downScroll:Bool = false;
+	public var quantumNotes:Bool = true;
 	public var middleScroll:Bool = false;
 	public var opponentStrums:Bool = true;
 	public var showFPS:Bool = true;
@@ -16,8 +17,8 @@ import states.TitleState;
 	public var autoPause:Bool = true;
 	public var antialiasing:Bool = true;
 	public var noteSkin:String = 'Default';
-	public var splashSkin:String = 'Psych';
-	public var splashAlpha:Float = 0.6;
+	public var splashSkin:String = 'Vanilla';
+	public var splashAlpha:Float = 1;
 	public var lowQuality:Bool = false;
 	public var shaders:Bool = true;
 	public var cacheOnGPU:Bool = #if !switch false #else true #end; // GPU Caching made by Raltyro

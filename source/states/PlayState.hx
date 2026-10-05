@@ -640,6 +640,8 @@ class PlayState extends MusicBeatState
 		cachePopUpScore();
 
 		if(eventNotes.length < 1) checkEventNote();
+
+		trace(Note.defaultNoteSkin+", "+ClientPrefs.data.quantumNotes);
 	}
 
 	function set_songSpeed(value:Float):Float
