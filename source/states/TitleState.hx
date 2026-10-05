@@ -350,6 +350,10 @@ class TitleState extends MusicBeatState
 				pressedEnter = true;
 			#end
 		}
+
+		if (transitioning && pressedEnter){
+			FlxG.switchState(new MainMenuState());
+		}
 		
 		if (newTitle) {
 			titleTimer += FlxMath.bound(elapsed, 0, 1);
