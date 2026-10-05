@@ -36,13 +36,12 @@ class Mods
 	inline public static function getGlobalMods()
 		return globalMods;
 
-	inline public static function pushGlobalMods() // prob a better way to do this but idc
+	inline public static function pushGlobalMods()
 	{
 		globalMods = [];
 		for(mod in parseList().enabled)
 		{
-			var pack:Dynamic = getPack(mod);
-			if(pack != null && pack.runsGlobally) globalMods.push(mod);
+			globalMods.push(mod);
 		}
 		return globalMods;
 	}
@@ -149,6 +148,15 @@ class Mods
 				trace(e);
 			}
 		}
+
+		// Retorna datos por defecto si no existe pack.json
+		return {
+			name: folder,
+			description: "Sin descripción",
+			color: [170, 170, 170],
+			restart: false,
+			runsGlobally: true
+		};
 		#end
 		return null;
 	}
@@ -160,9 +168,8 @@ class Mods
 
 		#if MODS_ALLOWED
 		try {
-			for (mod in CoolUtil.coolTextFile('modsList.txt'))
+			for (mod in CoolUtil.coolTextFile('contentsList.txt'))
 			{
-				//trace('Mod: $mod');
 				if(mod.trim().length < 1) continue;
 
 				var dat = mod.split("|");
@@ -178,15 +185,14 @@ class Mods
 		#end
 		return list;
 	}
-	
+
 	private static function updateModList()
 	{
 		#if MODS_ALLOWED
-		// Find all that are already ordered
 		var list:Array<Array<Dynamic>> = [];
 		var added:Array<String> = [];
 		try {
-			for (mod in CoolUtil.coolTextFile('modsList.txt'))
+			for (mod in CoolUtil.coolTextFile('contentsList.txt'))
 			{
 				var dat:Array<String> = mod.split("|");
 				var folder:String = dat[0];
@@ -200,19 +206,16 @@ class Mods
 			trace(e);
 		}
 		
-		// Scan for folders that aren't on modsList.txt yet
 		for (folder in getModDirectories())
 		{
 			if(folder.trim().length > 0 && FileSystem.exists(Paths.mods(folder)) && FileSystem.isDirectory(Paths.mods(folder)) &&
 			!ignoreModFolders.contains(folder.toLowerCase()) && !added.contains(folder))
 			{
 				added.push(folder);
-				list.push([folder, true]); //i like it false by default. -bb //Well, i like it True! -Shadow Mario (2022)
-				//Shadow Mario (2023): What the fuck was bb thinking
+				list.push([folder, true]);
 			}
 		}
 
-		// Now save file
 		var fileStr:String = '';
 		for (values in list)
 		{
@@ -220,9 +223,8 @@ class Mods
 			fileStr += values[0] + '|' + (values[1] ? '1' : '0');
 		}
 
-		File.saveContent('modsList.txt', fileStr);
+		File.saveContent('contentsList.txt', fileStr);
 		updatedOnState = true;
-		//trace('Saved modsList.txt');
 		#end
 	}
 
