@@ -1,8 +1,8 @@
 Português (Brasil)
 
 // Gameplay
-score_text: "Pontos: {1} | Erros: {2} | Avaliação: {3}"
-score_text_instakill: "Pontos: {1} | Avaliação: {2}"
+score_text: "Pontos: {1} - Erros: {2} - Avaliação: {3}"
+score_text_instakill: "Pontos: {1} - Avaliação: {2}"
 botplay: "Automático"
 
 rating_you_suck: "Que Horrível!"
