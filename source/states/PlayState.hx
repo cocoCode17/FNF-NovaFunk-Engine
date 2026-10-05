@@ -2572,7 +2572,35 @@ class PlayState extends MusicBeatState
 		note.ratingMod = daRating.ratingMod;
 		if(!note.ratingDisabled) daRating.hits++;
 		note.rating = daRating.name;
+		note.comboBreak = daRating.comboBreak;
+		
 		score = daRating.score;
+
+		if (daRating.comboBreak){
+			combo = 0;
+			
+			// correctly?
+			final lastCombo:Int = combo; // uuhhhh
+			if(gf != null && lastCombo > 10 && gf.hasAnimation('sad'))
+			{
+				gf.playAnim('sad');
+				gf.specialAnim = true;
+			}
+
+			totalPlayed++;
+			RecalculateRating(true);
+			note.desat();
+		}else{
+			combo++;
+		}
+
+		if(combo > 9999) combo = 9999;
+
+		if (daRating.name == 'sick') 
+		{
+			final precisionBonus:Int = Math.floor(Math.max(0, 50 - noteDiff));
+			score += precisionBonus;
+		}
 
 		if(daRating.noteSplash && !note.noteSplashData.disabled)
 			spawnNoteSplashOnNote(note);
@@ -2704,7 +2732,7 @@ class PlayState extends MusicBeatState
 			if(FlxG.keys.checkStatus(eventKey, JUST_PRESSED)) keyPressed(key);
 		}
 	}
-
+	
 	private function keyPressed(key:Int)
 	{
 		if(cpuControlled || paused || inCutscene || key < 0 || key >= playerStrums.length || !generatedMusic || endingSong || boyfriend.stunned) return;
@@ -2715,6 +2743,8 @@ class PlayState extends MusicBeatState
 		// more accurate hit time for the ratings?
 		var lastTime:Float = Conductor.songPosition;
 		if(Conductor.songPosition >= 0) Conductor.songPosition = FlxG.sound.music.time + Conductor.offset;
+
+		var hitNote:Note = null;
 
 		// obtain notes that the player can hit
 		var plrInputNotes:Array<Note> = notes.members.filter(function(n:Note):Bool {
@@ -2732,7 +2762,7 @@ class PlayState extends MusicBeatState
 				if (doubleNote.noteData == funnyNote.noteData) {
 					// if the note has a 0ms distance (is on top of the current note), kill it
 					if (Math.abs(doubleNote.strumTime - funnyNote.strumTime) < 1.0)
-						invalidateNote(doubleNote);
+						invalidateNote(doubleNote, true);
 					else if (doubleNote.strumTime < funnyNote.strumTime)
 					{
 						// replace the note if its ahead of time (or at least ensure "doubleNote" is ahead)
@@ -2740,6 +2770,8 @@ class PlayState extends MusicBeatState
 					}
 				}
 			}
+			
+			hitNote = funnyNote;
 			goodNoteHit(funnyNote);
 		}
 		else
@@ -2751,7 +2783,7 @@ class PlayState extends MusicBeatState
 		}
 
 		// Needed for the  "Just the Two of Us" achievement.
-		//									- Shadow Mario
+		//                                  - Shadow Mario
 		if(!keysPressed.contains(key)) keysPressed.push(key);
 
 		//more accurate hit time for the ratings? part 2 (Now that the calculations are done, go back to the time it was before for not causing a note stutter)
@@ -2760,7 +2792,7 @@ class PlayState extends MusicBeatState
 		var spr:StrumNote = playerStrums.members[key];
 		if(strumsBlocked[key] != true && spr != null && spr.animation.curAnim.name != 'confirm')
 		{
-			spr.playAnim('pressed');
+			spr.playAnim('pressed', true, hitNote);
 			spr.resetAnim = 0;
 		}
 		callOnScripts('onKeyPress', [key]);
@@ -3010,7 +3042,7 @@ class PlayState extends MusicBeatState
 		}
 
 		if(opponentVocals.length <= 0) vocals.volume = 1;
-		strumPlayAnim(true, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
+		strumPlayAnim(true, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate, note);
 		note.hitByOpponent = true;
 		
 		stagesFunc(function(stage:BaseStage) stage.opponentNoteHit(note));
@@ -3081,15 +3113,13 @@ class PlayState extends MusicBeatState
 			if(!cpuControlled)
 			{
 				var spr = playerStrums.members[note.noteData];
-				if(spr != null) spr.playAnim('confirm', true);
+				if(spr != null) spr.playAnim('confirm', true, note);
 			}
-			else strumPlayAnim(false, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate);
+			else strumPlayAnim(false, Std.int(Math.abs(note.noteData)), Conductor.stepCrochet * 1.25 / 1000 / playbackRate, note);
 			vocals.volume = 1;
 
 			if (!note.isSustainNote)
 			{
-				combo++;
-				if(combo > 9999) combo = 9999;
 				popUpScore(note);
 			}
 			var gainHealth:Bool = true; // prevent health gain, *if* sustains are treated as a singular note
@@ -3119,10 +3149,15 @@ class PlayState extends MusicBeatState
 		stagesFunc(function(stage:BaseStage) stage.goodNoteHit(note));
 		var result:Dynamic = callOnLuas('goodNoteHit', [notes.members.indexOf(note), leData, leType, isSus]);
 		if(result != LuaUtils.Function_Stop && result != LuaUtils.Function_StopHScript && result != LuaUtils.Function_StopAll) callOnHScript('goodNoteHit', [note]);
-		if(!note.isSustainNote) invalidateNote(note);
+		if(!note.isSustainNote) invalidateNote(note, true);
 	}
 
-	public function invalidateNote(note:Note):Void {
+	public function invalidateNote(note:Note, ?byHit:Bool = false):Void {
+		if (byHit && (note.comboBreak)) return;
+
+		// if (note.noteData >= 0 && note.noteData < 4) {
+		// 	noteQueues[note.noteData].remove(note);
+		// }
 		note.kill();
 		notes.remove(note, true);
 		note.destroy();
@@ -3468,7 +3503,7 @@ class PlayState extends MusicBeatState
 		#end
 	}
 
-	function strumPlayAnim(isDad:Bool, id:Int, time:Float) {
+	function strumPlayAnim(isDad:Bool, id:Int, time:Float, ?daNote:Note=null) {
 		var spr:StrumNote = null;
 		if(isDad) {
 			spr = opponentStrums.members[id];
@@ -3477,7 +3512,7 @@ class PlayState extends MusicBeatState
 		}
 
 		if(spr != null) {
-			spr.playAnim('confirm', true);
+			spr.playAnim('confirm', true, daNote);
 			spr.resetAnim = time;
 		}
 	}

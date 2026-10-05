@@ -5,6 +5,7 @@ import backend.NoteTypesConfig;
 
 import shaders.RGBPalette;
 import shaders.RGBPalette.RGBShaderReference;
+import shaders.AdjustColorShader;
 
 import objects.StrumNote;
 
@@ -57,6 +58,8 @@ class Note extends FlxSprite
 	public var mustPress:Bool = false;
 	public var canBeHit:Bool = false;
 	public var tooLate:Bool = false;
+	public var adjustColor:AdjustColorShader;
+	public var comboBreak:Bool = false;
 
 	public var wasGoodHit:Bool = false;
 	public var missed:Bool = false;
@@ -324,6 +327,14 @@ class Note extends FlxSprite
 			centerOrigin();
 		}
 		x += offsetX;
+
+		if (!ClientPrefs.data.quantumNotes)
+		{
+			adjustColor = new AdjustColorShader();
+			shader = adjustColor;
+		}else{
+			defaultRGB();
+		}
 	}
 
 	public static function initializeGlobalRGBShader(noteData:Int)
@@ -574,5 +585,15 @@ class Note extends FlxSprite
 			frame = frames.frames[animation.frameIndex];
 
 		return rect;
+	}
+
+	public function desat(){
+		alpha = 0.7;
+		multAlpha = 0.7;
+		if (adjustColor != null) {
+			adjustColor.brightness = 30;
+			adjustColor.contrast = 25;
+			adjustColor.saturation = -100;
+		}
 	}
 }
