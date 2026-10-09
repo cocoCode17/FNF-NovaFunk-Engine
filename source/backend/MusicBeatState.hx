@@ -2,6 +2,8 @@ package backend;
 
 import flixel.FlxState;
 import backend.PsychCamera;
+import flixel.FlxBasic;
+import flixel.util.FlxSort;
 
 class MusicBeatState extends FlxState
 {
@@ -211,5 +213,21 @@ class MusicBeatState extends FlxState
 		var val:Null<Float> = 4;
 		if(PlayState.SONG != null && PlayState.SONG.notes[curSection] != null) val = PlayState.SONG.notes[curSection].sectionBeats;
 		return val == null ? 4 : val;
+	}
+
+	override public function draw():Void
+    {
+        members.sort(orderByZIdx);
+        super.draw();
+    }
+
+  	private function orderByZIdx(a:FlxBasic, b:FlxBasic):Int
+	{
+		var zA:Int = (a != null && Std.isOfType(a, FlxSprite)) ? cast(a, FlxSprite).zIndex : 0;
+		var zB:Int = (b != null && Std.isOfType(b, FlxSprite)) ? cast(b, FlxSprite).zIndex : 0;
+
+		if (zA < zB) return -1;
+		if (zA > zB) return 1;
+		return 0;
 	}
 }

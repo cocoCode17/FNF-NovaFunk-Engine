@@ -424,8 +424,11 @@ class PlayState extends MusicBeatState
 		}
 		else
 		{
+			gfGroup.zIndex = 10;
 			add(gfGroup);
+			dadGroup.zIndex = 20;
 			add(dadGroup);
+			boyfriendGroup.zIndex = 30;
 			add(boyfriendGroup);
 		}
 		
