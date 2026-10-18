@@ -2,7 +2,6 @@ package states.editors;
 
 import flixel.graphics.FlxGraphic;
 
-import flixel.system.debug.interaction.tools.Pointer.GraphicCursorCross;
 import flixel.util.FlxDestroyUtil;
 
 import openfl.net.FileReference;
@@ -16,6 +15,9 @@ import objects.Bar;
 
 import states.editors.content.Prompt;
 import states.editors.content.PsychJsonPrinter;
+
+@:bitmap("psych-ui/images/cursorCross.webp")
+class GraphicCursorCross extends openfl.display.BitmapData {}
 
 class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler.PsychUIEvent
 {
@@ -109,10 +111,10 @@ class CharacterEditorState extends MusicBeatState implements PsychUIEventHandler
 
 		addCharacter();
 
-		cameraFollowPointer = new FlxSprite().loadGraphic(FlxGraphic.fromClass(GraphicCursorCross));
+		cameraFollowPointer = new FlxSprite().loadGraphic("assets/embed/images/psych-ui/cursorCross.png");
 		cameraFollowPointer.setGraphicSize(40, 40);
 		cameraFollowPointer.updateHitbox();
-
+		cameraFollowPointer.visible = true;
 		healthBar = new Bar(30, FlxG.height - 75);
 		healthBar.scrollFactor.set();
 		healthBar.cameras = [camHUD];
