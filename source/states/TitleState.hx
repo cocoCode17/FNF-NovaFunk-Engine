@@ -80,11 +80,11 @@ class TitleState extends MusicBeatState
 
 		if(!initialized)
 		{
-			if(FlxG.save.data != null && FlxG.save.data.fullscreen)
-			{
-				FlxG.fullscreen = FlxG.save.data.fullscreen;
-				//trace('LOADED FULLSCREEN SETTING!!');
-			}
+			// if(FlxG.save.data != null && FlxG.save.data.fullscreen)
+			// {
+			// 	FlxG.fullscreen = FlxG.save.data.fullscreen;
+			// 	//trace('LOADED FULLSCREEN SETTING!!');
+			// }
 			persistentUpdate = true;
 			persistentDraw = true;
 		}
@@ -320,6 +320,8 @@ class TitleState extends MusicBeatState
 	var newTitle:Bool = false;
 	var titleTimer:Float = 0;
 
+	var switchStateTimer:FlxTimer = null;
+
 	override function update(elapsed:Float)
 	{
 		if (FlxG.sound.music != null)
@@ -351,7 +353,8 @@ class TitleState extends MusicBeatState
 			#end
 		}
 
-		if (transitioning && pressedEnter){
+		if (transitioning && pressedEnter){ //fastskip
+			switchStateTimer?.cancel();
 			FlxG.switchState(new MainMenuState());
 		}
 		
@@ -389,7 +392,7 @@ class TitleState extends MusicBeatState
 				transitioning = true;
 				// FlxG.sound.music.stop();
 
-				new FlxTimer().start(1, function(tmr:FlxTimer)
+				switchStateTimer = new FlxTimer().start(1, function(tmr:FlxTimer)
 				{
 					MusicBeatState.switchState(new MainMenuState());
 					closedState = true;
