@@ -164,6 +164,7 @@ class GameOverSubstate extends MusicBeatSubstate
 				PlayState.deathCounter = 0;
 				PlayState.seenCutscene = false;
 				PlayState.chartingMode = false;
+				Main.fpsVar.y = 3;
 	
 				Mods.loadTopMod();
 				if (PlayState.isStoryMode)

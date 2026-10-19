@@ -645,6 +645,8 @@ class PlayState extends MusicBeatState
 		if(eventNotes.length < 1) checkEventNote();
 
 		trace(Note.defaultNoteSkin+", "+ClientPrefs.data.quantumNotes);
+		@:privateAccess
+		Main.fpsVar.y = 3+Main.fpsVar.textSize+2;
 	}
 
 	function set_songSpeed(value:Float):Float
@@ -1712,10 +1714,13 @@ class PlayState extends MusicBeatState
 
 		if(!endingSong && !inCutscene && allowDebugKeys)
 		{
-			if (controls.justPressed('debug_1'))
+			if (controls.justPressed('debug_1')){
 				openChartEditor();
-			else if (controls.justPressed('debug_2'))
+				Main.fpsVar.y = 3;
+			}else if (controls.justPressed('debug_2')){
 				openCharacterEditor();
+				Main.fpsVar.y = 3;
+			}
 		}
 
 		if (healthBar.bounds.max != null && health > healthBar.bounds.max)
@@ -2019,7 +2024,7 @@ class PlayState extends MusicBeatState
 				persistentDraw = false;
 				FlxTimer.globalManager.clear();
 				FlxTween.globalManager.clear();
-				FlxG.camera.setFilters([]);
+				FlxG.camera.filters = [];
 
 				if(GameOverSubstate.deathDelay > 0)
 				{
@@ -2454,6 +2459,7 @@ class PlayState extends MusicBeatState
 			if(Math.isNaN(percent)) percent = 0;
 			Highscore.saveScore(Song.loadedSongName, songScore, storyDifficulty, percent);
 			#end
+			Main.fpsVar.y = 3;
 			playbackRate = 1;
 
 			if (chartingMode)
@@ -3234,6 +3240,7 @@ class PlayState extends MusicBeatState
 		FlxG.stage.removeEventListener(KeyboardEvent.KEY_UP, onKeyRelease);
 
 		FlxG.camera.setFilters([]);
+		FlxG.camera.filters = [];
 
 		#if FLX_PITCH FlxG.sound.music.pitch = 1; #end
 		FlxG.animationTimeScale = 1;

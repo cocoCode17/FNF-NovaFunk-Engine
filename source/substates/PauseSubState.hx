@@ -320,6 +320,7 @@ class PauseSubState extends MusicBeatSubstate
 					PlayState.deathCounter = 0;
 					PlayState.seenCutscene = false;
 
+					Main.fpsVar.y = 3;
 					PlayState.instance.canResync = false;
 					Mods.loadTopMod();
 					if(PlayState.isStoryMode)

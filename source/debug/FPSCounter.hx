@@ -1,74 +1,159 @@
 package debug;
 
-import flixel.FlxG;
+import openfl.Assets;
+import openfl.Lib;
+import openfl.display.Sprite;
+import openfl.events.Event;
+import openfl.system.System;
+import openfl.text.Font;
 import openfl.text.TextField;
 import openfl.text.TextFormat;
-import openfl.system.System;
+import openfl.text.TextFormatAlign;
 
-/**
-	The FPS class provides an easy-to-use monitor to display
-	the current frame rate of an OpenFL project
-**/
-class FPSCounter extends TextField
+@:font("assets/fonts/vcr.ttf")
+class FPSFont extends Font {}
+
+class FPSCounter extends Sprite 
 {
-	/**
-		The current frame rate, expressed using frames-per-second
-	**/
-	public var currentFPS(default, null):Int;
+    private var textField:TextField;
+    private var textSize:Int = 18;
+    private var times:Array<Float>;
+    private var lastTime:Float;
+	// maybe added in a future...
+    // private var buildNum:Int = 0;
 
-	/**
-		The current memory usage (WARNING: this is NOT your total program memory usage, rather it shows the garbage collector memory)
-	**/
-	public var memoryMegas(get, never):Float;
+    private var msGraphSprite:Sprite;
+    private var memGraphSprite:Sprite;
 
-	@:noCompletion private var times:Array<Float>;
+    private var msHistory:Array<Float>;
+    private var memHistory:Array<Float>;
 
-	public function new(x:Float = 10, y:Float = 10, color:Int = 0x000000)
-	{
-		super();
+    private final maxPoints:Int = 35;
+    private final graphWidth:Float = 110;
+    private final graphHeight:Float = 18;
 
-		this.x = x;
-		this.y = y;
+    public function new(x:Float = 10, y:Float = 10, color:Int = 0xFFFFFF) 
+    {
+        super();
 
-		currentFPS = 0;
-		selectable = false;
-		mouseEnabled = false;
-		defaultTextFormat = new TextFormat("_sans", 14, color);
-		autoSize = LEFT;
-		multiline = true;
-		text = "FPS: ";
+        this.x = x;
+        this.y = y;
 
-		times = [];
-	}
+        Font.registerFont(FPSFont);
+        var font = new FPSFont();
 
-	var deltaTimeout:Float = 0.0;
+        var format = new TextFormat(font.fontName, textSize, color);
+        format.align = TextFormatAlign.LEFT;
 
-	// Event Handlers
-	private override function __enterFrame(deltaTime:Float):Void
-	{
-		final now:Float = haxe.Timer.stamp() * 1000;
-		times.push(now);
-		while (times[0] < now - 1000) times.shift();
-		// prevents the overlay from updating every frame, why would you need to anyways @crowplexus
-		if (deltaTimeout < 50) {
-			deltaTimeout += deltaTime;
-			return;
-		}
+        textField = new TextField();
+        textField.defaultTextFormat = format;
+        textField.embedFonts = true;
+        textField.selectable = false;
+        textField.multiline = true;
+        textField.wordWrap = false;
+        textField.width = 250;
+        textField.height = 85;
+        
+        textField.sharpness = 400;
+        addChild(textField);
 
-		currentFPS = times.length < FlxG.updateFramerate ? times.length : FlxG.updateFramerate;		
-		updateText();
-		deltaTimeout = 0.0;
-	}
+        msGraphSprite = new Sprite();
+        msGraphSprite.x = 0;
+        msGraphSprite.y = 88;
+        addChild(msGraphSprite);
 
-	public dynamic function updateText():Void { // so people can override it in hscript
-		text = 'FPS: ${currentFPS}'
-		+ '\nMemory: ${flixel.util.FlxStringUtil.formatBytes(memoryMegas)}';
+        memGraphSprite = new Sprite();
+        memGraphSprite.x = 0;
+        memGraphSprite.y = 112;
+        addChild(memGraphSprite);
 
-		textColor = 0xFFFFFFFF;
-		if (currentFPS < FlxG.drawFramerate * 0.5)
-			textColor = 0xFFFF0000;
-	}
+        msHistory = [];
+        memHistory = [];
+        times = [];
+        lastTime = Lib.getTimer();
 
-	inline function get_memoryMegas():Float
-		return cpp.vm.Gc.memInfo64(cpp.vm.Gc.MEM_INFO_USAGE);
+        addEventListener(Event.ENTER_FRAME, onEnterFrame);
+        // buildNum = debug.BuildMacro.getBuildNumber();
+        // trace(buildNum);
+    }
+
+    private function onEnterFrame(e:Event):Void 
+    {
+        var currentTime = Lib.getTimer();
+        var deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+
+        times.push(currentTime);
+        while (times[0] < currentTime - 1000) {
+            times.shift();
+        }
+
+        var currentFPS = times.length;
+        var memoryMB = System.totalMemory / (1024 * 1024);
+        var frameTimeMS = deltaTime;
+
+        textField.text = 'FPS: $currentFPS\n' +
+                         'FMS: ${Math.round(frameTimeMS * 10) / 10}ms\n' +
+                         'MEM: ${Math.round(memoryMB * 100) / 100} MB\n' /*+
+                         'BUILD NUM: ' + buildNum*/;
+
+        msHistory.push(frameTimeMS);
+        if (msHistory.length > maxPoints) msHistory.shift();
+
+        memHistory.push(memoryMB);
+        if (memHistory.length > maxPoints) memHistory.shift();
+
+        drawMSGraph();
+        drawMemGraph();
+    }
+
+    private function drawMSGraph():Void 
+    {
+        var g = msGraphSprite.graphics;
+        g.clear();
+
+        if (msHistory.length < 2) return;
+
+        g.lineStyle(1.5, 0xFFFFFF, 0.9);
+        var stepX = graphWidth / (maxPoints - 1);
+        var maxMS:Float = 33.3;
+
+        for (i in 0...msHistory.length) {
+            var ratio = Math.min(msHistory[i] / maxMS, 1.0);
+            var px = i * stepX;
+            var py = graphHeight - (ratio * graphHeight);
+
+            if (i == 0) g.moveTo(px, py);
+            else g.lineTo(px, py);
+        }
+    }
+
+    private function drawMemGraph():Void 
+    {
+        var g = memGraphSprite.graphics;
+        g.clear();
+
+        if (memHistory.length < 2) return;
+
+        var maxMem:Float = 1.0;
+        for (m in memHistory) if (m > maxMem) maxMem = m;
+
+        var stepX = graphWidth / (maxPoints - 1);
+
+        g.beginFill(0xFFFFFF, 0.4); 
+        g.lineStyle(1, 0xFFFFFF, 1.0);
+        
+        g.moveTo(0, graphHeight);
+
+        for (i in 0...memHistory.length) {
+            var ratio = memHistory[i] / maxMem;
+            var px = i * stepX;
+            var py = graphHeight - (ratio * graphHeight);
+            g.lineTo(px, py);
+        }
+
+        g.lineTo((memHistory.length - 1) * stepX, graphHeight);
+        g.lineTo(0, graphHeight);
+        g.endFill();
+    }
 }
