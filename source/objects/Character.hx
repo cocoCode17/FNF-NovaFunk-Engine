@@ -81,6 +81,39 @@ class Character extends FlxSprite
 	public var originalFlipX:Bool = false;
 	public var editorIsPlayer:Null<Bool> = null;
 
+	// thx unofficial crew <3
+	public static var playerMissHoldSongs:Map<String, Array<{step:Int, hold:Float}>> = [ ];
+    /*
+		EXAMPLE FOR playerMissHoldSongs Entries
+
+		'songID' => [
+			// {step: stepToSetNewHold, hold: NewHold}
+			set newHold to -1 to revert from his default value
+		],
+	*/
+	public static function getPlayerMissHold():Float
+	{
+		if (PlayState.instance == null || PlayState.SONG == null) return -1;
+		final defaultHold:Float = Conductor.crochet / 375; // idea del bb dudu
+		var bestStep:Int = 0;
+		var hold:Float = defaultHold;
+
+		final list = playerMissHoldSongs.get(Paths.formatToSongPath(PlayState.SONG.song));
+		if (list != null)
+		{
+			for (cfg in list)
+			{
+				@:privateAccess
+				if (PlayState.instance.curStep >= cfg.step && cfg.step >= bestStep)
+				{
+					bestStep = cfg.step;
+					hold = cfg.hold < 0 ? defaultHold : cfg.hold;
+				}
+			}
+		}
+		return hold;
+	}
+
 	public function new(x:Float, y:Float, ?character:String = 'bf', ?isPlayer:Bool = false)
 	{
 		super(x, y);
@@ -246,6 +279,9 @@ class Character extends FlxSprite
 			return;
 		}
 
+		final isMissAnim:Bool = _lastPlayedAnimation?.endsWith('miss') ?? false;
+		final playerMissHold:Float = (isPlayer && isMissAnim) ? getPlayerMissHold() : -1;
+
 		if(heyTimer > 0)
 		{
 			var rate:Float = (PlayState.instance != null ? PlayState.instance.playbackRate : 1.0);
@@ -266,7 +302,7 @@ class Character extends FlxSprite
 			specialAnim = false;
 			dance();
 		}
-		else if (getAnimationName().endsWith('miss') && isAnimationFinished())
+		else if (isMissAnim && isAnimationFinished() && (playerMissHold < 0 || holdTimer >= playerMissHold))
 		{
 			dance();
 			finishAnimation();
@@ -289,7 +325,10 @@ class Character extends FlxSprite
 
 		if (getAnimationName().startsWith('sing')) holdTimer += elapsed;
 
-		if (holdTimer >= Conductor.stepCrochet * (0.0011 #if FLX_PITCH / (FlxG.sound.music != null ? FlxG.sound.music.pitch : 1) #end) * singDuration)
+		final holdThreshold:Float = playerMissHold >= 0 ? playerMissHold
+			: (Conductor.stepCrochet * (0.0011 #if FLX_PITCH / (FlxG.sound.music != null ? FlxG.sound.music.pitch : 1) #end) * singDuration);
+		
+		if (holdTimer >= holdThreshold)
 		{
 			dance();
 			holdTimer = 0;
@@ -387,7 +426,9 @@ class Character extends FlxSprite
 			atlas.update(0);
 		}
 		_lastPlayedAnimation = AnimName;
-
+		
+		if (isPlayer && AnimName.endsWith('miss') && getPlayerMissHold() >= 0) holdTimer = 0;
+		
 		if (hasAnimation(AnimName))
 		{
 			var daOffset = animOffsets.get(AnimName);
