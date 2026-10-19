@@ -24,6 +24,7 @@ There you can learn how to use the 212 PlayState funcions in your mod!
 ## Credits:
 * Shadow Mario - Main Programmer and Head of Psych Engine.
 * Riveren - Main Artist/Animator of Psych Engine.
+* JustX - Some CC Engine Library's was taken.
 
 ### Special Thanks
 * bbpanzu - Ex-Team Member (Programmer).
