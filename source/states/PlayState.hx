@@ -433,19 +433,34 @@ class PlayState extends MusicBeatState
 		}
 		
 		#if (LUA_ALLOWED || HSCRIPT_ALLOWED)
-		// "SCRIPTS FOLDER" SCRIPTS
-		for (folder in Mods.directoriesWithFile(Paths.getSharedPath(), 'scripts/'))
-			for (file in FileSystem.readDirectory(folder))
-			{
-				#if LUA_ALLOWED
-				if(file.toLowerCase().endsWith('.lua'))
-					new FunkinLua(folder + file);
-				#end
+			// "SCRIPTS FOLDER" SCRIPTS
+			var scriptFoldersToCheck:Array<String> = [];
 
-				#if HSCRIPT_ALLOWED
-				if(file.toLowerCase().endsWith('.hx'))
-					initHScript(folder + file);
-				#end
+			var sharedScriptsPath:String = Paths.getSharedPath('scripts/');
+			if (FileSystem.exists(sharedScriptsPath))
+				scriptFoldersToCheck.push(sharedScriptsPath);
+
+			if (Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
+			{
+				var currentContentScriptsPath:String = Paths.mods(Mods.currentModDirectory + '/scripts/');
+				if (FileSystem.exists(currentContentScriptsPath))
+					scriptFoldersToCheck.push(currentContentScriptsPath);
+			}
+
+			for (folder in scriptFoldersToCheck)
+			{
+				for (file in FileSystem.readDirectory(folder))
+				{
+					#if LUA_ALLOWED
+					if(file.toLowerCase().endsWith('.lua'))
+						new FunkinLua(folder + file);
+					#end
+
+					#if HSCRIPT_ALLOWED
+					if(file.toLowerCase().endsWith('.hx'))
+						initHScript(folder + file);
+					#end
+				}
 			}
 		#end
 			
@@ -574,16 +589,16 @@ class PlayState extends MusicBeatState
 
 		#if LUA_ALLOWED
 		for (notetype in noteTypes)
-			startLuasNamed('custom_notetypes/' + notetype + '.lua');
+			startContentLua('custom_notetypes/' + notetype + '.lua');
 		for (event in eventsPushed)
-			startLuasNamed('custom_events/' + event + '.lua');
+			startContentLua('custom_events/' + event + '.lua');
 		#end
 
 		#if HSCRIPT_ALLOWED
 		for (notetype in noteTypes)
-			startHScriptsNamed('custom_notetypes/' + notetype + '.hx');
+			startContentHScript('custom_notetypes/' + notetype + '.hx');
 		for (event in eventsPushed)
-			startHScriptsNamed('custom_events/' + event + '.hx');
+			startContentHScript('custom_events/' + event + '.hx');
 		#end
 		noteTypes = null;
 		eventsPushed = null;
@@ -3385,6 +3400,67 @@ class PlayState extends MusicBeatState
 			initHScript(scriptToLoad);
 			return true;
 		}
+		return false;
+	}
+
+	public function startContentLua(fileRelativePath:String):Bool
+	{
+		#if LUA_ALLOWED
+		var pathToCheck:String = '';
+
+		if (Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
+		{
+			var modPath:String = Paths.mods(Mods.currentModDirectory + '/' + fileRelativePath);
+			if (FileSystem.exists(modPath))
+				pathToCheck = modPath;
+		}
+
+		if (pathToCheck.length < 1)
+		{
+			var sharedPath:String = Paths.getSharedPath(fileRelativePath);
+			if (FileSystem.exists(sharedPath))
+				pathToCheck = sharedPath;
+		}
+
+		if (pathToCheck.length > 0)
+		{
+			for (script in luaArray)
+				if (script.scriptName == pathToCheck) return false;
+
+			new FunkinLua(pathToCheck);
+			return true;
+		}
+		#end
+		return false;
+	}
+
+	public function startContentHScript(fileRelativePath:String):Bool
+	{
+		#if HSCRIPT_ALLOWED
+		var pathToCheck:String = '';
+
+		if (Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
+		{
+			var modPath:String = Paths.mods(Mods.currentModDirectory + '/' + fileRelativePath);
+			if (FileSystem.exists(modPath))
+				pathToCheck = modPath;
+		}
+
+		if (pathToCheck.length < 1)
+		{
+			var sharedPath:String = Paths.getSharedPath(fileRelativePath);
+			if (FileSystem.exists(sharedPath))
+				pathToCheck = sharedPath;
+		}
+
+		if (pathToCheck.length > 0)
+		{
+			if (crowplexus.iris.Iris.instances.exists(pathToCheck)) return false;
+
+			initHScript(pathToCheck);
+			return true;
+		}
+		#end
 		return false;
 	}
 

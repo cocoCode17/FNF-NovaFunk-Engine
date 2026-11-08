@@ -14,10 +14,11 @@ import openfl.system.System;
 import openfl.geom.Rectangle;
 
 import lime.utils.Assets;
+import lime.media.AudioBuffer;
+import lime.media.vorbis.VorbisFile;
 import flash.media.Sound;
 
 import haxe.Json;
-
 
 #if MODS_ALLOWED
 import backend.Mods;
@@ -75,9 +76,53 @@ class Paths
 				currentTrackedSounds.remove(key);
 			}
 		}
+
+		closeStreamedSounds();
+
 		// flags everything to be cleared out next unused memory clear
 		localTrackedAssets = [];
 		#if !html5 openfl.Assets.cache.clear("songs"); #end
+	}
+
+	static var streamedSounds:Map<String, Sound> = [];
+	static var orphanedStreamedSounds:Array<Sound> = [];
+
+	static function isStreamedSoundInUse(snd:Sound):Bool
+	{
+		if (snd == null) return false;
+
+		final music = FlxG.sound.music;
+		if (music != null && @:privateAccess music._sound == snd) return true;
+
+		return isStreamedSoundUsedByOther(snd);
+	}
+
+	static function isStreamedSoundUsedByOther(snd:Sound):Bool
+	{
+		if (snd == null || FlxG.sound.list == null) return false;
+
+		for (s in FlxG.sound.list.members)
+			if (s != null && s != FlxG.sound.music && @:privateAccess s._sound == snd) return true;
+
+		return false;
+	}
+
+	public static function closeStreamedSounds():Void
+	{
+		final playing:Sound = @:privateAccess FlxG.sound.music?._sound;
+		for (key => snd in streamedSounds)
+		{
+			if (dumpExclusions.contains(key) || snd == playing) continue;
+			try snd.close() catch (e:Dynamic) {}
+			streamedSounds.remove(key);
+		}
+
+		for (snd in orphanedStreamedSounds)
+		{
+			if (snd == playing) continue;
+			try snd.close() catch (e:Dynamic) {}
+		}
+		orphanedStreamedSounds = [];
 	}
 
 	public static function freeGraphicsFromMemory()
@@ -209,17 +254,16 @@ class Paths
 		return returnSound('sounds/$key', modsAllowed);
 
 	inline static public function music(key:String, ?modsAllowed:Bool = true):Sound
-		return returnSound('music/$key', modsAllowed);
+		return returnVorbisSound('music/$key', modsAllowed);
 
 	inline static public function inst(song:String, ?modsAllowed:Bool = true):Sound
-		return returnSound('${formatToSongPath(song)}/Inst', 'songs', modsAllowed);
+		return returnVorbisSound('${formatToSongPath(song)}/Inst', 'songs', modsAllowed);
 
 	inline static public function voices(song:String, postfix:String = null, ?modsAllowed:Bool = true):Sound
 	{
 		var songKey:String = '${formatToSongPath(song)}/Voices';
 		if(postfix != null) songKey += '-' + postfix;
-		//trace('songKey test: $songKey');
-		return returnSound(songKey, 'songs', modsAllowed, false);
+		return returnVorbisSound(songKey, 'songs', modsAllowed, false);
 	}
 
 	inline static public function soundRandom(key:String, min:Int, max:Int, ?modsAllowed:Bool = true)
@@ -308,11 +352,13 @@ class Paths
 			var modKey:String = key;
 			if(parentFolder == 'songs') modKey = 'songs/$key';
 
-			for(mod in Mods.getGlobalMods())
-				if (FileSystem.exists(mods('$mod/$modKey')))
+			if(Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
+			{
+				if (FileSystem.exists(mods(Mods.currentModDirectory + '/' + modKey)))
 					return true;
+			}
 
-			if (FileSystem.exists(mods(Mods.currentModDirectory + '/' + modKey)) || FileSystem.exists(mods(modKey)))
+			if (FileSystem.exists(mods(modKey)))
 				return true;
 		}
 		#end
@@ -446,6 +492,71 @@ class Paths
 		return currentTrackedSounds.get(file);
 	}
 
+	public static function returnVorbisSound(key:String, ?path:String, ?modsAllowed:Bool = true, ?beepOnNull:Bool = true):Sound
+	{
+		#if lime_vorbis
+		if (ClientPrefs.data.streamedAudio)
+		{
+			var file:String = getPath(Language.getFileTranslation(key) + '.$SOUND_EXT', SOUND, path, modsAllowed);
+			if (file != null)
+			{
+				var ext = haxe.io.Path.extension(file).toLowerCase();
+
+				if (ext == 'ogg')
+				{
+					final cached:Sound = streamedSounds.get(file);
+					if (cached != null && !isStreamedSoundInUse(cached)) return cached;
+
+					var buffer:AudioBuffer = null;
+					var vorbisFile = null;
+
+					#if sys
+					if (FileSystem.exists(file))
+					{
+						vorbisFile = VorbisFile.fromFile(file);
+					}
+					#end
+
+					if (vorbisFile == null && OpenFlAssets.exists(file, SOUND))
+					{
+						var bytes = OpenFlAssets.getBytes(file);
+						if (bytes != null) vorbisFile = VorbisFile.fromBytes(bytes);
+					}
+
+					if (vorbisFile != null)
+					{
+						buffer = AudioBuffer.fromVorbisFile(vorbisFile);
+					}
+
+					#if sys
+					if (buffer == null && FileSystem.exists(file))
+					{
+						buffer = AudioBuffer.fromFileStream(file);
+					}
+					#end
+
+					if (buffer != null)
+					{
+						final snd:Sound = Sound.fromAudioBuffer(buffer);
+						final old:Sound = streamedSounds.get(file);
+						if (old != null)
+						{
+							if (isStreamedSoundUsedByOther(old)) 
+								orphanedStreamedSounds.push(old);
+							else 
+								try old.close() catch (e:Dynamic) {}
+						}
+						streamedSounds.set(file, snd);
+						return snd;
+					}
+				}
+			}
+		}
+		#end
+
+		return returnSound(key, path, modsAllowed, beepOnNull);
+	}
+
 	#if MODS_ALLOWED
 	inline static public function mods(key:String = '')
 		return 'contents/' + key;
@@ -474,6 +585,7 @@ class Paths
 
 	static public function modFolders(key:String)
 	{
+		#if MODS_ALLOWED
 		if(Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
 		{
 			var fileToCheck:String = mods(Mods.currentModDirectory + '/' + key);
@@ -481,14 +593,12 @@ class Paths
 				return fileToCheck;
 		}
 
-		for(mod in Mods.getGlobalMods())
-		{
-			var fileToCheck:String = mods(mod + '/' + key);
-			if(FileSystem.exists(fileToCheck))
-				return fileToCheck;
-		}
+		var rootCheck:String = mods(key);
+		if(FileSystem.exists(rootCheck))
+			return rootCheck;
+		#end
+
 		return 'contents/' + key;
-		// return 'mods/' + key;
 	}
 	#end
 

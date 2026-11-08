@@ -4859,20 +4859,38 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 			}
 		}
 
-		for (directory in Mods.directoriesWithFile(Paths.getSharedPath(), mainFolder))
+		var directoriesToCheck:Array<String> = [];
+
+		var sharedPath:String = Paths.getSharedPath(mainFolder);
+		if (FileSystem.exists(sharedPath))
+			directoriesToCheck.push(sharedPath);
+
+		#if MODS_ALLOWED
+		if (Mods.currentModDirectory != null && Mods.currentModDirectory.length > 0)
 		{
-			for (file in FileSystem.readDirectory(directory))
+			var modPath:String = Paths.mods(Mods.currentModDirectory + '/' + mainFolder);
+			if (FileSystem.exists(modPath) && !directoriesToCheck.contains(modPath))
+				directoriesToCheck.push(modPath);
+		}
+		#end
+
+		for (directory in directoriesToCheck)
+		{
+			if (FileSystem.exists(directory) && FileSystem.isDirectory(directory))
 			{
-				var path = haxe.io.Path.join([directory, file.trim()]);
-				if (!FileSystem.isDirectory(path) && !file.startsWith('readme.'))
+				for (file in FileSystem.readDirectory(directory))
 				{
-					for (fileType in fileTypes)
+					var path = haxe.io.Path.join([directory, file.trim()]);
+					if (!FileSystem.isDirectory(path) && !file.startsWith('readme.'))
 					{
-						var fileToCheck:String = file.substr(0, file.length - fileType.length);
-						if(fileToCheck.length > 0 && path.endsWith(fileType) && !fileList.contains(fileToCheck))
+						for (fileType in fileTypes)
 						{
-							fileList.push(fileToCheck);
-							break;
+							var fileToCheck:String = file.substr(0, file.length - fileType.length);
+							if(fileToCheck.length > 0 && path.endsWith(fileType) && !fileList.contains(fileToCheck))
+							{
+								fileList.push(fileToCheck);
+								break;
+							}
 						}
 					}
 				}
