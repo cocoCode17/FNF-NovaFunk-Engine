@@ -3302,6 +3302,8 @@ class PlayState extends MusicBeatState
 			boyfriend.dance();
 		if (dad != null && beat % dad.danceEveryNumBeats == 0 && !dad.getAnimationName().startsWith('sing') && !dad.stunned)
 			dad.dance();
+
+		stagesFunc(function(stage:BaseStage) stage.characterBopper(beat));
 	}
 
 	public function playerDance():Void
