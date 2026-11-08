@@ -36,6 +36,7 @@ typedef AnimArray = {
 	var loop:Bool;
 	var indices:Array<Int>;
 	var offsets:Array<Int>;
+	@:optional var assetPath:String;
 }
 
 class Character extends FlxSprite
@@ -190,7 +191,23 @@ class Character extends FlxSprite
 
 		if(!isAnimateAtlas)
 		{
-			frames = Paths.getMultiAtlas(json.image.split(','));
+			var imagesToLoad:Array<String> = json.image.split(',');
+
+			animationsArray = json.animations;
+			if (animationsArray != null && animationsArray.length > 0)
+			{
+				for (anim in animationsArray)
+				{
+					if (anim.assetPath != null && anim.assetPath.length > 0)
+					{
+						var trimmedAsset:String = StringTools.trim(anim.assetPath);
+						if (!imagesToLoad.contains(trimmedAsset))
+							imagesToLoad.push(trimmedAsset);
+					}
+				}
+			}
+
+			frames = Paths.getMultiAtlas(imagesToLoad);
 		}
 		#if flxanimate
 		else
