@@ -164,7 +164,11 @@ class PlayState extends MusicBeatState
 
 	public var strumLineNotes:FlxTypedGroup<StrumNote> = new FlxTypedGroup<StrumNote>();
 	public var opponentStrums:FlxTypedGroup<StrumNote> = new FlxTypedGroup<StrumNote>();
+	public var opponentStrumBG:FlxTypedGroup<StrumlineBG> = new FlxTypedGroup<StrumlineBG>();
+	public var oppstrumBG:StrumlineBG;
 	public var playerStrums:FlxTypedGroup<StrumNote> = new FlxTypedGroup<StrumNote>();
+	public var playerStrumBG:FlxTypedGroup<StrumlineBG> = new FlxTypedGroup<StrumlineBG>();
+	public var pstrumBG:StrumlineBG;
 	public var grpNoteSplashes:FlxTypedGroup<NoteSplash> = new FlxTypedGroup<NoteSplash>(8);
 
 	public var camZooming:Bool = false;
@@ -491,7 +495,11 @@ class PlayState extends MusicBeatState
 		uiGroup = new FlxSpriteGroup();
 		comboGroup = new FlxSpriteGroup();
 		noteGroup = new FlxTypedGroup<FlxBasic>();
-		add(comboGroup);
+		
+		if (ClientPrefs?.data?.strumlineBGAlpha > 0){
+			if (!ClientPrefs?.data?.hideOppStrumlineBG) add(opponentStrumBG);
+			add(playerStrumBG);
+		}
 		add(uiGroup);
 		add(noteGroup);
 
@@ -999,6 +1007,21 @@ class PlayState extends MusicBeatState
 				setOnScripts('defaultOpponentStrumX' + i, opponentStrums.members[i].x);
 				setOnScripts('defaultOpponentStrumY' + i, opponentStrums.members[i].y);
 				//if(ClientPrefs.data.middleScroll) opponentStrums.members[i].visible = false;
+			}
+
+			if (ClientPrefs?.data?.strumlineBGAlpha > 0){
+				// faaaaaahhk
+				if (!ClientPrefs?.data?.hideOppStrumlineBG && !ClientPrefs.data?.middleScroll){
+					oppstrumBG = new StrumlineBG(opponentStrums, FlxColor.BLACK, ClientPrefs?.data?.strumlineBGAlpha);
+					opponentStrumBG.add(oppstrumBG);
+					oppstrumBG.zIndex = timeTxt.zIndex-6;
+					oppstrumBG.cameras = [camHUD];
+				}
+			
+				pstrumBG = new StrumlineBG(playerStrums, FlxColor.BLACK, ClientPrefs?.data?.strumlineBGAlpha);
+				playerStrumBG.add(pstrumBG);
+				pstrumBG.zIndex = timeTxt.zIndex-5;
+				pstrumBG.cameras = [camHUD];
 			}
 
 			startedCountdown = true;

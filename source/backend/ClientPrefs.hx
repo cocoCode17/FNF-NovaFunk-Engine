@@ -20,6 +20,8 @@ import states.TitleState;
 	public var noteSkin:String = 'Default';
 	public var splashSkin:String = 'Vanilla';
 	public var splashAlpha:Float = 1;
+	public var strumlineBGAlpha:Float = 0;
+	public var hideOppStrumlineBG:Bool = false;
 	public var lowQuality:Bool = false;
 	public var shaders:Bool = true;
 	public var cacheOnGPU:Bool = #if !switch false #else true #end; // GPU Caching made by Raltyro

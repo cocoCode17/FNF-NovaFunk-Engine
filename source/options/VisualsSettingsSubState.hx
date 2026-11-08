@@ -79,6 +79,25 @@ class VisualsSettingsSubState extends BaseOptionsMenu
 		addOption(option);
 		option.onChange = playNoteSplashes;
 
+		var option:Option = new Option('Strumline BG Opacity',
+			'How much transparent should the Strumline BG be.',
+			'strumlineBGAlpha',
+			PERCENT);
+		option.scrollSpeed = 1.6;
+		option.minValue = 0.0;
+		option.maxValue = 1;
+		option.changeValue = 0.1;
+		option.decimals = 1;
+		addOption(option);
+		// option.onChange = playNoteSplashes;
+
+		
+		var option:Option = new Option('Hide Opponent Strumline BG',
+			'If checked, hide Opponent Strumline BG.',
+			'hideOppStrumlineBG',
+			BOOL);
+		addOption(option);
+
 		var option:Option = new Option('Hide HUD',
 			'If checked, hides most HUD elements.',
 			'hideHud',
