@@ -23,7 +23,12 @@ import states.TitleState;
 	public var lowQuality:Bool = false;
 	public var shaders:Bool = true;
 	public var cacheOnGPU:Bool = #if !switch false #else true #end; // GPU Caching made by Raltyro
+	#if lime_vorbis
+	public var streamedAudio:Bool = false;
+	#end
 	public var framerate:Int = 60;
+	public var unlockedFramerate:Bool = false;
+	public var vsync:Bool = false;
 	public var camZooms:Bool = true;
 	public var hideHud:Bool = false;
 	public var noteOffset:Int = 0;

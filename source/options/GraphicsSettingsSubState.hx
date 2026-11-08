@@ -1,6 +1,7 @@
 package options;
 
 import objects.Character;
+import openfl.Lib;
 
 class GraphicsSettingsSubState extends BaseOptionsMenu
 {
@@ -45,6 +46,14 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 			BOOL);
 		addOption(option);
 
+		#if lime_vorbis
+		var option:Option = new Option('Use Streamed Audio', //Name
+			"If checked, reads music files in chunks instead of loading them entirely into RAM.\nReduces memory usage and improves load times.", //Description
+			'streamedAudio',
+			BOOL);
+		addOption(option);
+		#end
+
 		#if !html5 //Apparently other framerates isn't correctly supported on Browser? Probably it has some V-Sync shit enabled by default, idk
 		var option:Option = new Option('Framerate',
 			"Pretty self explanatory, isn't it?",
@@ -59,6 +68,20 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 		option.displayFormat = '%v FPS';
 		option.onChange = onChangeFramerate;
 		#end
+
+		var option:Option = new Option('Unlock Framerate cap', //Name
+			"Removes the framerate cap, allowing the game to run at the maximum possible FPS your system can achieve.", //Description
+			'unlockedFramerate',
+			BOOL);
+		option.onChange = applyUnlockedFramerate;
+		addOption(option);
+
+		var option:Option = new Option('Enable VSync', //Name
+			"Synchronizes the game's framerate with your monitor's refresh rate to prevent screen tearing.", //Description
+			'vsync',
+			BOOL);
+			option.onChange = applyVSync;
+		addOption(option);
 
 		super();
 		insert(1, boyfriend);
@@ -77,6 +100,8 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 
 	function onChangeFramerate()
 	{
+		if (ClientPrefs.data?.unlockedFramerate) return;
+		
 		if(ClientPrefs.data.framerate > FlxG.drawFramerate)
 		{
 			FlxG.updateFramerate = ClientPrefs.data.framerate;
@@ -86,6 +111,48 @@ class GraphicsSettingsSubState extends BaseOptionsMenu
 		{
 			FlxG.drawFramerate = ClientPrefs.data.framerate;
 			FlxG.updateFramerate = ClientPrefs.data.framerate;
+		}
+	}
+
+	function applyUnlockedFramerate(){
+		if (ClientPrefs.data?.unlockedFramerate)
+		{
+			FlxG.updateFramerate = 1000;
+			FlxG.drawFramerate = 1000;
+		}
+		else
+		{
+			if (ClientPrefs.data?.vsync)
+			{
+				applyVSync();
+			}
+			else
+			{
+				FlxG.updateFramerate = ClientPrefs.data?.framerate;
+				FlxG.drawFramerate = ClientPrefs.data?.framerate;
+			}
+		}
+	}
+
+	function applyVSync(){
+		var vsyncEnabled:Bool = (ClientPrefs.data.vsync == true);
+
+		if (vsyncEnabled)
+		{
+			if (Lib.current.stage.window != null)
+			{
+				var refreshRate:Int = Lib.current.stage.window.displayMode.refreshRate;
+				if (refreshRate > 0)
+				{
+					FlxG.updateFramerate = refreshRate;
+					FlxG.drawFramerate = refreshRate;
+				}
+				else
+				{
+					FlxG.updateFramerate = 60;
+					FlxG.drawFramerate = 60;
+				}
+			}
 		}
 	}
 
