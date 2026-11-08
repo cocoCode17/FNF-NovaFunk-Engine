@@ -182,6 +182,8 @@ class PlayState extends MusicBeatState
 
 	public var healthBar:Bar;
 	public var timeBar:Bar;
+	public var healthBar:SwagBar;
+	public var timeBar:SwagBar;
 	var songPercent:Float = 0;
 
 	public var ratingsData:Array<Rating> = Rating.loadDefault();
@@ -507,26 +509,32 @@ class PlayState extends MusicBeatState
 		var showTime:Bool = (ClientPrefs.data.timeBarType != 'Disabled');
 		timeTxt = new FlxText(STRUM_X + (FlxG.width / 2) - 248, 19, 400, "", 32);
 		timeTxt.setFormat(Paths.font("vcr.ttf"), 32, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		timeTxt.setFormat(Paths.font("vcr.ttf"), 23, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		timeTxt.scrollFactor.set();
 		timeTxt.alpha = 0;
 		timeTxt.borderSize = 2;
-		timeTxt.visible = updateTime = showTime;
+		timeTxt.visible = false;
 		if(ClientPrefs.data.downScroll) timeTxt.y = FlxG.height - 44;
 		if(ClientPrefs.data.timeBarType == 'Song Name') timeTxt.text = SONG.song;
-
-		timeBar = new Bar(0, timeTxt.y + (timeTxt.height / 4), 'timeBar', function() return songPercent, 0, 1);
+		timeTxt.updateHitbox();
+		timeTxt.screenCenter(X);
+		
+		final bg = new FlxSprite().makeGraphic(FlxG.width, 10, FlxColor.BLACK);
+        final fill = new FlxSprite().makeGraphic(FlxG.width, 10, FlxColor.WHITE);
+        timeBar = new SwagBar(0, ClientPrefs?.data?.downScroll ? FlxG.height - bg.height : 0, 1, 0, LEFT_TO_RIGHT, 10, bg, fill);
 		timeBar.scrollFactor.set();
 		timeBar.screenCenter(X);
 		timeBar.alpha = 0;
 		timeBar.visible = showTime;
 		uiGroup.add(timeBar);
 		uiGroup.add(timeTxt);
+		timeTxt.y = ClientPrefs?.data?.downScroll ? (timeBar.y - timeTxt.height)-10 : (timeBar.y + timeBar.height) + timeTxt.height - 10; 
 
 		noteGroup.add(strumLineNotes);
 
 		if(ClientPrefs.data.timeBarType == 'Song Name')
 		{
-			timeTxt.size = 24;
+			timeTxt.size = 19;
 			timeTxt.y += 3;
 		}
 
@@ -552,12 +560,21 @@ class PlayState extends MusicBeatState
 		FlxG.worldBounds.set(0, 0, FlxG.width, FlxG.height);
 		moveCameraSection();
 
-		healthBar = new Bar(0, FlxG.height * (!ClientPrefs.data.downScroll ? 0.89 : 0.11), 'healthBar', function() return health, 0, 2);
+		final healthBarBG = new FlxSprite(0,0, Paths.image('healthBar'));
+		healthBarBG.y = FlxG.height * 0.89;
+		healthBarBG.screenCenter(X);
+		healthBarBG.scrollFactor.set();
+		healthBarBG.visible = !ClientPrefs?.data?.hideHud;
+		if(ClientPrefs?.data?.downScroll) healthBarBG.y = 0.11 * FlxG.height;
+		uiGroup.add(healthBarBG);
+		
+		final bg = new FlxSprite().makeGraphic(Std.int(healthBarBG.width - 8), Std.int(healthBarBG.height - 8), FlxColor.WHITE);
+        final fill = new FlxSprite().makeGraphic(Std.int(healthBarBG.width - 8), Std.int(healthBarBG.height - 8), FlxColor.WHITE);
+		healthBar = new SwagBar(healthBarBG.x + 4, healthBarBG.y + 4, 2, 1, RIGHT_TO_LEFT, 9, bg, fill);
 		healthBar.screenCenter(X);
-		healthBar.leftToRight = false;
 		healthBar.scrollFactor.set();
-		healthBar.visible = !ClientPrefs.data.hideHud;
-		healthBar.alpha = ClientPrefs.data.healthBarAlpha;
+		healthBar.visible = !ClientPrefs?.data?.hideHud;
+		healthBar.alpha = ClientPrefs?.data?.healthBarAlpha;
 		reloadHealthBarColors();
 		uiGroup.add(healthBar);
 
@@ -590,6 +607,9 @@ class PlayState extends MusicBeatState
 			botplayTxt.y = healthBar.y + 70;
 
 		uiGroup.cameras = [camHUD];
+		//force it,
+		timeBar.cameras = [camOther];
+		timeTxt.cameras = [camOther];
 		noteGroup.cameras = [camHUD];
 		comboGroup.cameras = [camHUD];
 
@@ -1761,8 +1781,8 @@ class PlayState extends MusicBeatState
 			}
 		}
 
-		if (healthBar.bounds.max != null && health > healthBar.bounds.max)
-			health = healthBar.bounds.max;
+		if (health > healthBar.maxValue)
+			health = healthBar.maxValue;
 
 		updateIconsScale(elapsed);
 		updateIconsPosition(elapsed);
@@ -1790,6 +1810,7 @@ class PlayState extends MusicBeatState
 		{
 			var curTime:Float = Math.max(0, Conductor.songPosition - ClientPrefs.data.noteOffset);
 			songPercent = (curTime / songLength);
+			timeBar.value = songPercent;
 
 			var songCalc:Float = (songLength - curTime);
 			if(ClientPrefs.data.timeBarType == 'Time Elapsed') songCalc = curTime;
@@ -1938,32 +1959,45 @@ class PlayState extends MusicBeatState
 	public dynamic function updateIconsPosition(elapsed:Float)
 	{
 		var iconOffset:Int = 26;
-		var targetP1X = healthBar.barCenter + (150 * iconP1.scale.x - 150) / 2 - iconOffset;
-		var targetP2X = healthBar.barCenter - (150 * iconP2.scale.x) / 2 - iconOffset * 2;
+
+		var barWidth:Float = healthBar.fill.frameWidth;
+		var clipWidth:Float = (healthBar.fill.clipRect != null) ? healthBar.fill.clipRect.width : 0;
+
+		var centerBarX:Float = healthBar.x + (barWidth - clipWidth);
+
+		var targetP1X = centerBarX + (150 * iconP1.scale.x - 150) / 2 - iconOffset;
+		var targetP2X = centerBarX - (150 * iconP2.scale.x) / 2 - iconOffset * 2;
+
 		if (iconP1.stillUpdate)
-			iconP1.x = FlxMath.lerp(iconP1.x, targetP1X, elapsed * 5 * playbackRate);
+			iconP1.x = targetP1X;
+			// iconP1.x = FlxMath.lerp(iconP1.x, targetP1X, FlxMath.bound(elapsed * 5 * playbackRate, 0, 1));
+
 		if (iconP2.stillUpdate)
-			iconP2.x = FlxMath.lerp(iconP2.x, targetP2X, elapsed * 5 * playbackRate);
+			iconP2.x = targetP2X;
+			// iconP2.x = FlxMath.lerp(iconP2.x, targetP2X, FlxMath.bound(elapsed * 5 * playbackRate, 0, 1));
 	}
 
 	var iconsAnimations:Bool = true;
 	function set_health(value:Float):Float // You can alter how icon animations work here
 	{
 		value = FlxMath.roundDecimal(value, 5); //Fix Float imprecision
-		if(!iconsAnimations || healthBar == null || !healthBar.enabled || healthBar.valueFunction == null)
+		if(!iconsAnimations || healthBar == null || !healthBar.enabled)
 		{
 			health = value;
 			return health;
 		}
 
-		// update health bar
 		health = value;
-		var newPercent:Null<Float> = FlxMath.remapToRange(FlxMath.bound(healthBar.valueFunction(), healthBar.bounds.min, healthBar.bounds.max), healthBar.bounds.min, healthBar.bounds.max, 0, 100);
-		healthBar.percent = (newPercent != null ? newPercent : 0);
+        healthBar.percent = health*50;
+		healthBar.value = health;
+		final percent:Float = healthBar.percent;
+		if (iconP1?.animation?.curAnim != null) 
+			iconP1.animation.curAnim.curFrame = (percent < 20) ? 1 : 0;
 
-		if (iconP1?.animation?.curAnim != null) iconP1.animation.curAnim.curFrame = (healthBar.percent < 20) ? 1 : 0; //If health is under 20%, change player icon to frame 1 (losing icon), otherwise, frame 0 (normal)
-		if (iconP2?.animation?.curAnim != null) iconP2.animation.curAnim.curFrame = (healthBar.percent > 80) ? 1 : 0; //If health is over 80%, change opponent icon to frame 1 (losing icon), otherwise, frame 0 (normal)
-		return health;
+		if (iconP2?.animation?.curAnim != null) 
+			iconP2.animation.curAnim.curFrame = (percent > 80) ? 1 : 0;
+
+		return value;
 	}
 
 	function openPauseMenu()
