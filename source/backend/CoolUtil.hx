@@ -41,6 +41,19 @@ class CoolUtil
 	inline public static function capitalize(text:String)
 		return text.charAt(0).toUpperCase() + text.substr(1).toLowerCase();
 
+	inline public static function formatNumber(num:Int):String {
+		var str = Std.string(num);
+		var result = "";
+		var len = str.length;
+		for (i in 0...len) {
+			if ((len - i) % 3 == 0 && i != 0) {
+				result += ",";
+			}
+			result += str.charAt(i);
+		}
+		return result;
+	}
+
 	inline public static function coolTextFile(path:String):Array<String>
 	{
 		var daList:String = null;
